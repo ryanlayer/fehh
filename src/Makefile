@@ -13,7 +13,8 @@ LIB= fehh.o \
 OBJS=$(addprefix $(OBJ)/, $(LIB))
 
 
-PROG=ehh
+PROG=ehh \
+     ihs
 
 LIST=$(addprefix $(BIN)/, $(PROG))
 

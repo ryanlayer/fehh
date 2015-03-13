@@ -24,13 +24,12 @@ int main(int argc, char **argv)
     int s_is_set = 0,
         m_is_set = 0,
         f_is_set = 0,
-        l_is_set = 0,
         v_is_set = 0,
         h_is_set = 0;
 
     int c;
 
-    while ((c = getopt (argc, argv, "hs:f:v:l:m:")) != -1) {
+    while ((c = getopt (argc, argv, "hs:f:v:m:")) != -1) {
         switch (c) {
         case 'h':
             h_is_set = 1;
@@ -47,10 +46,6 @@ int main(int argc, char **argv)
             f_is_set = 1;
             tped_file_name = optarg;
             break;
-        case 'l':
-            l_is_set = 1;
-            locus_id = optarg;
-            break;
         case 'm':
             m_is_set = 1;
             map_file_name = optarg;
@@ -59,7 +54,6 @@ int main(int argc, char **argv)
             if ( (optopt == 'f') || 
                  (optopt == 'v') || 
                  (optopt == 's') || 
-                 (optopt == 'l') || 
                  (optopt == 'm') )
                 fprintf (stderr, "Option -%c requires an argument.\n",
                          optopt);
@@ -82,11 +76,6 @@ int main(int argc, char **argv)
 
     if (!v_is_set) {
         fprintf(stderr, "Number of variants is not set.\n");
-        return usage(argv[0]);
-    }
-
-    if (!l_is_set) {
-        fprintf(stderr, "Locus ID is not set.\n");
         return usage(argv[0]);
     }
 
@@ -133,7 +122,6 @@ int main(int argc, char **argv)
     double *genetic_pos = (double *)malloc(num_variants * sizeof(double));
     uint32_t *physical_pos = (uint32_t *)
             malloc(num_variants * sizeof(uint32_t));
-
     while ( (linelen = getline(&line, &linecap, fp)) > 0 ) {
         p = strtok(line, " "); // chr
         p = strtok(NULL, " "); // name
@@ -145,6 +133,7 @@ int main(int argc, char **argv)
     }
     fclose(fp);
 
+    uint32_t maf_threshold = num_samples * 0.05;
     uint32_t num_words = num_samples / 32 + 1;
     uint32_t num_bytes =  num_words*sizeof(uint32_t);
     uint32_t *A0 = (uint32_t *)malloc(num_samples*num_bytes);
@@ -159,12 +148,12 @@ int main(int argc, char **argv)
 
     // C0 and C1 hold the masks that define the samples with and without
     // the core haplotype
-    //uint32_t *C0 = (uint32_t *)calloc(1, num_bytes);
-    //uint32_t *C1 = (uint32_t *)calloc(1, num_bytes);
+    uint32_t *C0 = (uint32_t *)calloc(1, num_bytes);
+    uint32_t *C1 = (uint32_t *)calloc(1, num_bytes);
     uint32_t num_C0, num_C1;
 
-    //uint32_t *B0_c = (uint32_t *)calloc(1, num_bytes);
-    //uint32_t *B1_c = (uint32_t *)calloc(1, num_bytes);
+    uint32_t *B0_c = (uint32_t *)calloc(1, num_bytes);
+    uint32_t *B1_c = (uint32_t *)calloc(1, num_bytes);
 
     uint32_t *R = (uint32_t *)malloc(num_bytes);
 
@@ -176,29 +165,41 @@ int main(int argc, char **argv)
         exit(1);
     } 
 
-    char *h;
-    uint32_t j, pop, len_A0 = 0, len_A1 = 0, len_t_A = 0, S = 0, B_i = 0;
-    int locus_found = 0;
+    char *h, *locus_name;
+    uint32_t af, j, pop, 
+            len_A0 = 0, len_A1 = 0, len_t_A = 0, S = 0, 
+            B_i = 0, L_i = 0;
 
+    for ( L_i = 0; L_i < num_variants; ++L_i) {
+        if (L_i == B_i)
+            linelen = push_B(B,
+                           &B0,
+                           &B1,
+                           &B_i,
+                           num_words,
+                           num_samples,
+                           &locus_name,
+                           &line, 
+                           &linecap,
+                           fp);
+        if (linelen < 1)
+            break;
 
-    // scan through the file until we either hit the locus of interest 
-    // or reach the end
-    while ( !(locus_found) && 
-            ((linelen = getline(&line, &linecap, fp)) > 0)) {
+        af = pop_count(B1, num_words);
+
+        if (af >= maf_threshold) {
+            //long iHH_b = ihh_back();
+            //iHH_f = ihh_forward();
+        }
+
+        printf("%s\t%u %u\n", locus_name, af, maf_threshold);
+    }
+#if 0
+    while ( ((linelen = getline(&line, &linecap, fp)) > 0)) {
 
         // skip some fields
         p = strtok(line, " ");
-        p = strtok(NULL, " ");
-
-        // if we hit the locus of interest, set C0 and C1 as the masks
-        // for the ancestral and derived alleles
-        if (strcmp(p, locus_id) == 0) {
-            //set_bit_arrays(h, C0, C1, num_samples);
-            //num_C0 = pop_count(C0, num_words);
-            //num_C1 = pop_count(C1, num_words);
-            locus_found = 1;
-        }
-
+        locus_name = strtok(NULL, " ");
         // skip some fields
         p = strtok(NULL, " ");
         p = strtok(NULL, " ");
@@ -209,22 +210,14 @@ int main(int argc, char **argv)
         B1 = B + ((B_i*2+1)*num_words);
         set_bit_arrays(h, B0, B1, num_samples);
 
+        af = pop_count(B1, num_words);
+
+        printf("%s\t%u %u\n", locus_name, af, maf_threshold);
         B_i += 1;
     }
+#endif
 
-    uint32_t locus_i = B_i - 1; //move back one to start at the targe locus
-    double locus_genetic_pos = genetic_pos[locus_i];
-    uint32_t locus_physical_pos = physical_pos[locus_i];
-    long double r = ihh_back(locus_i,
-                             B,
-                             &A0,
-                             &A1,
-                             num_words,
-                             num_bytes,
-                             R,
-                             genetic_pos,
-                             physical_pos,
-                             &t_A);
+
 
 #if 0
     // work down stream with just C1
@@ -234,10 +227,7 @@ int main(int argc, char **argv)
 
     B0 = B + (locus_i*2*num_words);
     B1 = B + ((locus_i*2+1)*num_words);
-    num_C0 = pop_count(B0, num_words);
-    num_C1 = pop_count(B1, num_words);
 
-    /*
     and(R, B0, C1, num_words);
     memcpy(A1, R, num_bytes);
     and(R, B1, C1, num_words);
@@ -249,11 +239,6 @@ int main(int argc, char **argv)
     and(R, B1, C0, num_words);
     memcpy(A0+num_words, R, num_bytes);
     len_A0 = 2;
-    */
-    memcpy(A1, B1, num_bytes);
-    len_A1 = 1;
-    memcpy(A0, B0, num_bytes);
-    len_A0 = 1;
 
     i = locus_i - 1;
     long double e0 = 1, e1 = 1;
@@ -263,15 +248,15 @@ int main(int argc, char **argv)
                            genetic_pos[i]-locus_genetic_pos);
         e1 = ehh_step(&A1,
                       &len_A1,
-                      //C1,
+                      C1,
                       num_C1,
                       B,
                       i,
-                      //&S,
+                      &S,
                       num_words,
                       num_bytes,
-                      //B0_c,
-                      //B1_c,
+                      B0_c,
+                      B1_c,
                       R,
                       &t_A);
 
@@ -279,15 +264,15 @@ int main(int argc, char **argv)
 
         e0 = ehh_step(&A0,
                       &len_A0,
-                      //C0,
+                      C0,
                       num_C0,
                       B,
                       i,
-                      //&S,
+                      &S,
                       num_words,
                       num_bytes,
-                      //B0_c,
-                      //B1_c,
+                      B0_c,
+                      B1_c,
                       R,
                       &t_A);
 
@@ -295,14 +280,12 @@ int main(int argc, char **argv)
 
         i -= 1;
     }
-#endif
     printf("--\n");
 
     // work upstream
     B0 = B + (locus_i*2*num_words);
     B1 = B + ((locus_i*2+1)*num_words);
 
-    /*
     and(R, B0, C1, num_words);
     memcpy(A1, R, num_bytes);
     and(R, B1, C1, num_words);
@@ -314,18 +297,12 @@ int main(int argc, char **argv)
     and(R, B1, C0, num_words);
     memcpy(A0+num_words, R, num_bytes);
     len_A0 = 2;
-    */
-
-    memcpy(A1, B1, num_bytes);
-    len_A1 = 1;
-    memcpy(A0, B0, num_bytes);
-    len_A0 = 1;
-
 
     i = locus_i + 1;
+    e0 = 1;
+    e1 = 1;
     //while ( ((linelen = getline(&line, &linecap, fp)) > 0) &&
             //(i < locus_i + 150)) {
-    long double e0 = 1, e1 = 1;
     while ( ((linelen = getline(&line, &linecap, fp)) > 0) &&
             (e0 > 0.05) && (e1 > 0.05) ) {
         // skip some fields
@@ -346,15 +323,15 @@ int main(int argc, char **argv)
                            genetic_pos[i]-locus_genetic_pos);
         e1 = ehh_step(&A1,
                       &len_A1,
-                      //C1,
+                      C1,
                       num_C1,
                       B,
                       i,
-                      //&S,
+                      &S,
                       num_words,
                       num_bytes,
-                      //B0_c,
-                      //B1_c,
+                      B0_c,
+                      B1_c,
                       R,
                       &t_A);
 
@@ -362,15 +339,15 @@ int main(int argc, char **argv)
 
         e0 = ehh_step(&A0,
                       &len_A0,
-                      //C0,
+                      C0,
                       num_C0,
                       B,
                       i,
-                      //&S,
+                      &S,
                       num_words,
                       num_bytes,
-                      //B0_c,
-                      //B1_c,
+                      B0_c,
+                      B1_c,
                       R,
                       &t_A);
 
@@ -378,6 +355,6 @@ int main(int argc, char **argv)
 
         i += 1;
     }
-
+#endif
     return 0;
 }
