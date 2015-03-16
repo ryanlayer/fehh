@@ -10,6 +10,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <mmintrin.h>
+#include <emmintrin.h>
+#include <smmintrin.h>
 #include "n_choose_2.h"
 
 

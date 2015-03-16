@@ -1,8 +1,9 @@
 BIN=../bin
 OBJ=../obj
 HTS_ROOT=$(HOME)/src/htslib
-CFLAGS=-g -D_FILE_OFFSET_BITS=64
-#CFLAGS=-O3
+#CFLAGS=-g -D_FILE_OFFSET_BITS=64
+CFLAGS=-O3
+#CFLAGS+=-msse4.2
 CC=gcc
 
 LIB= fehh.o \
