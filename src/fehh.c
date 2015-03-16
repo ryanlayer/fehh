@@ -198,26 +198,29 @@ long double ihh_back(uint32_t locus_i,
 
     uint32_t i = locus_i - 1;
     long double s_e0 = 0, s_e1 = 0, last_e0 = 1, last_e1 = 1, e0 = 1, e1 = 1;
-    while ( (i > 0) && (e0 > 0.05) && (e1 > 0.05) ) {
-        e1 = ehh_step(A1,
-                      &len_A1,
-                      num_C1,
-                      B,
-                      i,
-                      num_words,
-                      num_bytes,
-                      R,
-                      t_A);
+    while ( (i > 0) && ((e0 > 0.05) || (e1 > 0.05)) ) {
+        //printf("%u ", i);
+        if (e1 > 0.05)
+            e1 = ehh_step(A1,
+                          &len_A1,
+                          num_C1,
+                          B,
+                          i,
+                          num_words,
+                          num_bytes,
+                          R,
+                          t_A);
 
-        e0 = ehh_step(A0,
-                      &len_A0,
-                      num_C0,
-                      B,
-                      i,
-                      num_words,
-                      num_bytes,
-                      R,
-                      t_A);
+        if (e0 > 0.05)
+            e0 = ehh_step(A0,
+                          &len_A0,
+                          num_C0,
+                          B,
+                          i,
+                          num_words,
+                          num_bytes,
+                          R,
+                          t_A);
 
         s_e0 += (last_e0 + e0)* (genetic_pos[i+1] -genetic_pos[i]);
         s_e1 += (last_e1 + e1)* (genetic_pos[i+1] -genetic_pos[i]);
@@ -227,7 +230,7 @@ long double ihh_back(uint32_t locus_i,
         i -= 1;
     }
 
-    printf("%Lf\t%Lf\n", s_e0/2, s_e1/2);
+    printf("%Lf\t%Lf\t", s_e0/2, s_e1/2);
 
     return 0;
 }
@@ -266,9 +269,7 @@ long double ihh_forward(uint32_t locus_i,
     long double s_e0 = 0, s_e1 = 0, last_e0 = 1, last_e1 = 1, e0 = 1, e1 = 1;
     char *locus_name = NULL;
     while ( (e0 > 0.05) || (e1 > 0.05) ) {
-
-        //fprintf(stderr,"i:%u\tB_i:%u\n", i, *B_i);
-
+        //printf("%u ", i);
         if (i == *B_i)
             linelen = push_B(B,
                              B_i,
@@ -312,7 +313,112 @@ long double ihh_forward(uint32_t locus_i,
         i += 1;
     }
 
-    printf("%Lf\t%Lf\n", s_e0/2, s_e1/2);
+    printf("%Lf\t%Lf\t", s_e0/2, s_e1/2);
+
+    return 0;
+}
+//}}}
+
+//{{{ long double ihh_step(int direction,
+long double ihh_step(int direction,
+                     long double *s_e0,
+                     long double *s_e1,
+                     uint32_t locus_i,
+                     uint32_t *B,
+                     uint32_t *B_i,
+                     FILE *fp,
+                     char **line,
+                     uint32_t **A0,
+                     uint32_t **A1,
+                     uint32_t num_words,
+                     uint32_t num_bytes,
+                     uint32_t num_samples,
+                     uint32_t *R,
+                     double *genetic_pos,
+                     uint32_t *physical_pos,
+                     uint32_t **t_A)
+{
+    size_t linecap = 0;
+    ssize_t linelen = 1;
+
+    uint32_t *B0 = B + (locus_i*2*num_words);
+    uint32_t *B1 = B + ((locus_i*2+1)*num_words);
+    uint32_t num_C0 = pop_count(B0, num_words);
+    uint32_t num_C1 = pop_count(B1, num_words);
+
+    memcpy(*A1, B1, num_bytes);
+    uint32_t len_A1 = 1;
+    memcpy(*A0, B0, num_bytes);
+    uint32_t len_A0 = 1;
+
+    uint32_t i = locus_i + direction;
+    *s_e0 = 0;
+    *s_e1 = 0;
+    long double last_e0 = 1, last_e1 = 1, e0 = 1, e1 = 1;
+    char *locus_name = NULL;
+    //while ( (i>0) && ((e0 > 0.05) || (e1 > 0.05) )) {
+    while ( (i>0) && (e1 > 0.05) ) {
+        //printf("%u ", i);
+        if (i == *B_i)
+            linelen = push_B(B,
+                             B_i,
+                             num_words,
+                             num_samples,
+                             &locus_name,
+                             line, 
+                             &linecap,
+                             fp);
+        if (linelen < 1)
+            break;
+
+        //if ( e1 > 0.05)
+            e1 = ehh_step(A1,
+                          &len_A1,
+                          num_C1,
+                          B,
+                          i,
+                          num_words,
+                          num_bytes,
+                          R,
+                          t_A);
+
+        //if ( e0 > 0.05)
+            e0 = ehh_step(A0,
+                          &len_A0,
+                          num_C0,
+                          B,
+                          i,
+                          num_words,
+                          num_bytes,
+                          R,
+                          t_A);
+
+        if (direction == 1) {
+            //uint32_t fd = physical_pos[i] - physical_pos[i-1];
+            long double gd = genetic_pos[i] - genetic_pos[i-1];
+            //if (fd > 20000)
+                //printf("!");
+            //printf("%u ", fd);
+            *s_e0 += (last_e0 + e0)* gd;
+            *s_e1 += (last_e1 + e1)* gd;
+        } else {
+            //uint32_t fd = physical_pos[i+1] - physical_pos[i];
+            long double gd = genetic_pos[i+1] - genetic_pos[i];
+            //if (fd > 20000)
+                //printf("!");
+            //printf("%u ", fd);
+            *s_e0 += (last_e0 + e0)* gd;
+            *s_e1 += (last_e1 + e1)* gd;
+        }
+
+        last_e0 = e0;
+        last_e1 = e1;
+
+        i += direction;
+    }
+
+    *s_e0 = (*s_e0)/2;
+    *s_e1 = (*s_e1)/2;
 
     return 0;
 }

@@ -255,38 +255,41 @@ int main(int argc, char **argv)
 
     i = locus_i - 1;
     //while ( (i > locus_i - 150) ) {
-    while ( (i > 0) && (e0 > 0.05) && (e1 > 0.05) ) {
+    //while ( (i > 0) && ((e0 > 0.05) || (e1 > 0.05)) ) {
+    while ( (i > 0) && (e1 > 0.05) ) {
         printf("-%u\t%f\t", locus_physical_pos-physical_pos[i],
                            genetic_pos[i]-locus_genetic_pos);
-        e1 = ehh_step(&A1,
-                      &len_A1,
-                      //C1,
-                      num_C1,
-                      B,
-                      i,
-                      //&S,
-                      num_words,
-                      num_bytes,
-                      //B0_c,
-                      //B1_c,
-                      R,
-                      &t_A);
+        //if (e1 > 0.05)
+            e1 = ehh_step(&A1,
+                          &len_A1,
+                          //C1,
+                          num_C1,
+                          B,
+                          i,
+                          //&S,
+                          num_words,
+                          num_bytes,
+                          //B0_c,
+                          //B1_c,
+                          R,
+                          &t_A);
 
         printf("%Lf\t", e1);
 
-        e0 = ehh_step(&A0,
-                      &len_A0,
-                      //C0,
-                      num_C0,
-                      B,
-                      i,
-                      //&S,
-                      num_words,
-                      num_bytes,
-                      //B0_c,
-                      //B1_c,
-                      R,
-                      &t_A);
+        //if (e0 > 0.05)
+            e0 = ehh_step(&A0,
+                          &len_A0,
+                          //C0,
+                          num_C0,
+                          B,
+                          i,
+                          //&S,
+                          num_words,
+                          num_bytes,
+                          //B0_c,
+                          //B1_c,
+                          R,
+                          &t_A);
 
         printf("%Lf\n", e0);
 
@@ -328,7 +331,8 @@ int main(int argc, char **argv)
     e0 = 1; 
     e1 = 1;
     while ( ((linelen = getline(&line, &linecap, fp)) > 0) &&
-            (e0 > 0.05) && (e1 > 0.05) ) {
+            (e1 > 0.05) ) {
+            //((e0 > 0.05) || (e1 > 0.05)) ) {
         // skip some fields
         p = strtok(line, " ");
         p = strtok(NULL, " ");
@@ -345,35 +349,37 @@ int main(int argc, char **argv)
 
         printf("%u\t%f\t", physical_pos[i]-locus_physical_pos,
                            genetic_pos[i]-locus_genetic_pos);
-        e1 = ehh_step(&A1,
-                      &len_A1,
-                      //C1,
-                      num_C1,
-                      B,
-                      i,
-                      //&S,
-                      num_words,
-                      num_bytes,
-                      //B0_c,
-                      //B1_c,
-                      R,
-                      &t_A);
+        //if (e1 > 0.05)
+            e1 = ehh_step(&A1,
+                          &len_A1,
+                          //C1,
+                          num_C1,
+                          B,
+                          i,
+                          //&S,
+                          num_words,
+                          num_bytes,
+                          //B0_c,
+                          //B1_c,
+                          R,
+                          &t_A);
 
         printf("%Lf\t", e1);
 
-        e0 = ehh_step(&A0,
-                      &len_A0,
-                      //C0,
-                      num_C0,
-                      B,
-                      i,
-                      //&S,
-                      num_words,
-                      num_bytes,
-                      //B0_c,
-                      //B1_c,
-                      R,
-                      &t_A);
+        //if (e0 > 0.05)
+            e0 = ehh_step(&A0,
+                          &len_A0,
+                          //C0,
+                          num_C0,
+                          B,
+                          i,
+                          //&S,
+                          num_words,
+                          num_bytes,
+                          //B0_c,
+                          //B1_c,
+                          R,
+                          &t_A);
 
         printf("%Lf\n", e0);
 

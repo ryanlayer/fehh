@@ -1,4 +1,10 @@
 #include "fehh.h"
+#include <tgmath.h>
+
+#define MIN(a,b) \
+       ({ __typeof__ (a) _a = (a); \
+               __typeof__ (b) _b = (b); \
+             _a < _b ? _a : _b; })
 
 //{{{int usage(char *prog)
 int usage(char *prog)
@@ -180,199 +186,58 @@ int main(int argc, char **argv)
         B1 = B + ((L_i*2+1)*num_words);
  
         af = pop_count(B1, num_words);
-        printf("%u %u\n", af, maf_threshold);
 
+        //af = MIN(af, num_samples - af);
+
+        long double e0_d, e1_d, e0_u, e1_u;
         if (af >= maf_threshold) {
-            /*
-            long double r0 = ihh_back(L_i,
-                                     B,
-                                     &A0,
-                                     &A1,
-                                     num_words,
-                                     num_bytes,
-                                     R,
-                                     genetic_pos,
-                                     physical_pos,
-                                     &t_A);
-            */
-            long double r1 = ihh_forward(L_i,
-                                         B,
-                                         &B_i,
-                                         fp,
-                                         &line,
-                                         &A0,
-                                         &A1,
-                                         num_words,
-                                         num_bytes,
-                                         num_samples,
-                                         R,
-                                         genetic_pos,
-                                         physical_pos,
-                                         &t_A);
+            // scan down stream (direction = -1)
+            printf("%d\t",  physical_pos[L_i]);
+            long double r0 = ihh_step(-1,
+                                      &e0_d,
+                                      &e1_d,
+                                      L_i,
+                                      B,
+                                      &B_i,
+                                      fp,
+                                      &line,
+                                      &A0,
+                                      &A1,
+                                      num_words,
+                                      num_bytes,
+                                      num_samples,
+                                      R,
+                                      genetic_pos,
+                                      physical_pos,
+                                      &t_A);
+
+            // scan up stream (direction = 1)
+            long double r1 = ihh_step(1,
+                                      &e0_u,
+                                      &e1_u,
+                                      L_i,
+                                      B,
+                                      &B_i,
+                                      fp,
+                                      &line,
+                                      &A0,
+                                      &A1,
+                                      num_words,
+                                      num_bytes,
+                                      num_samples,
+                                      R,
+                                      genetic_pos,
+                                      physical_pos,
+                                      &t_A);
+
+            long double iHH_0 = e0_d + e0_u;
+            long double iHH_1 = e1_d + e1_u;
+            printf("%f\t%Lf\t%Lf\t%Lf\n", 
+                    ((float)af)/((float)num_samples),
+                    iHH_1,
+                    iHH_0,
+                    logl(iHH_1/iHH_0));
         }
     }
-
-#if 0
-    while ( ((linelen = getline(&line, &linecap, fp)) > 0)) {
-
-        // skip some fields
-        p = strtok(line, " ");
-        locus_name = strtok(NULL, " ");
-        // skip some fields
-        p = strtok(NULL, " ");
-        p = strtok(NULL, " ");
-        h = p + strlen(p) + 1;
-
-        // parse the variants into bit arays 
-        B0 = B + (B_i*2*num_words);
-        B1 = B + ((B_i*2+1)*num_words);
-        set_bit_arrays(h, B0, B1, num_samples);
-
-        af = pop_count(B1, num_words);
-
-        printf("%s\t%u %u\n", locus_name, af, maf_threshold);
-        B_i += 1;
-    }
-#endif
-
-
-
-#if 0
-    // work down stream with just C1
-    uint32_t locus_i = B_i - 1; //move back one to start at the targe locus
-    double locus_genetic_pos = genetic_pos[locus_i];
-    uint32_t locus_physical_pos = physical_pos[locus_i];
-
-    B0 = B + (locus_i*2*num_words);
-    B1 = B + ((locus_i*2+1)*num_words);
-
-    and(R, B0, C1, num_words);
-    memcpy(A1, R, num_bytes);
-    and(R, B1, C1, num_words);
-    memcpy(A1+num_words, R, num_bytes);
-    len_A1 = 2;
-
-    and(R, B0, C0, num_words);
-    memcpy(A0, R, num_bytes);
-    and(R, B1, C0, num_words);
-    memcpy(A0+num_words, R, num_bytes);
-    len_A0 = 2;
-
-    i = locus_i - 1;
-    long double e0 = 1, e1 = 1;
-    //while ( (i > locus_i - 150) ) {
-    while ( (i > 0) && (e0 > 0.05) && (e1 > 0.05) ) {
-        printf("-%u\t%f\t", locus_physical_pos-physical_pos[i],
-                           genetic_pos[i]-locus_genetic_pos);
-        e1 = ehh_step(&A1,
-                      &len_A1,
-                      C1,
-                      num_C1,
-                      B,
-                      i,
-                      &S,
-                      num_words,
-                      num_bytes,
-                      B0_c,
-                      B1_c,
-                      R,
-                      &t_A);
-
-        printf("%Lf\t", e1);
-
-        e0 = ehh_step(&A0,
-                      &len_A0,
-                      C0,
-                      num_C0,
-                      B,
-                      i,
-                      &S,
-                      num_words,
-                      num_bytes,
-                      B0_c,
-                      B1_c,
-                      R,
-                      &t_A);
-
-        printf("%Lf\n", e0);
-
-        i -= 1;
-    }
-    printf("--\n");
-
-    // work upstream
-    B0 = B + (locus_i*2*num_words);
-    B1 = B + ((locus_i*2+1)*num_words);
-
-    and(R, B0, C1, num_words);
-    memcpy(A1, R, num_bytes);
-    and(R, B1, C1, num_words);
-    memcpy(A1+num_words, R, num_bytes);
-    len_A1 = 2;
-
-    and(R, B0, C0, num_words);
-    memcpy(A0, R, num_bytes);
-    and(R, B1, C0, num_words);
-    memcpy(A0+num_words, R, num_bytes);
-    len_A0 = 2;
-
-    i = locus_i + 1;
-    e0 = 1;
-    e1 = 1;
-    //while ( ((linelen = getline(&line, &linecap, fp)) > 0) &&
-            //(i < locus_i + 150)) {
-    while ( ((linelen = getline(&line, &linecap, fp)) > 0) &&
-            (e0 > 0.05) && (e1 > 0.05) ) {
-        // skip some fields
-        p = strtok(line, " ");
-        p = strtok(NULL, " ");
-        p = strtok(NULL, " ");
-        p = strtok(NULL, " ");
-        h = p + strlen(p) + 1;
-
-        // parse the variants into bit arays 
-        B0 = B + (B_i*2*num_words);
-        B1 = B + ((B_i*2+1)*num_words);
-        set_bit_arrays(h, B0, B1, num_samples);
-
-        B_i += 1;
-
-        printf("%u\t%f\t", physical_pos[i]-locus_physical_pos,
-                           genetic_pos[i]-locus_genetic_pos);
-        e1 = ehh_step(&A1,
-                      &len_A1,
-                      C1,
-                      num_C1,
-                      B,
-                      i,
-                      &S,
-                      num_words,
-                      num_bytes,
-                      B0_c,
-                      B1_c,
-                      R,
-                      &t_A);
-
-        printf("%Lf\t", e1);
-
-        e0 = ehh_step(&A0,
-                      &len_A0,
-                      C0,
-                      num_C0,
-                      B,
-                      i,
-                      &S,
-                      num_words,
-                      num_bytes,
-                      B0_c,
-                      B1_c,
-                      R,
-                      &t_A);
-
-        printf("%Lf\n", e0);
-
-        i += 1;
-    }
-#endif
     return 0;
 }
