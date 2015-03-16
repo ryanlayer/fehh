@@ -1,5 +1,6 @@
 #include "fehh.h"
 
+//{{{uint32_t pop_count(uint32_t *b, uint32_t num_words)
 uint32_t pop_count(uint32_t *b, uint32_t num_words)
 {
     uint32_t i, count=0;
@@ -16,7 +17,9 @@ uint32_t pop_count(uint32_t *b, uint32_t num_words)
 
     return count;
 }
+//}}}
 
+//{{{ void and(uint32_t *r, uint32_t *a, uint32_t *b, uint32_t num_words)
 void and(uint32_t *r, uint32_t *a, uint32_t *b, uint32_t num_words)
 {
     uint32_t i;
@@ -24,12 +27,16 @@ void and(uint32_t *r, uint32_t *a, uint32_t *b, uint32_t num_words)
     for (i = 0; i < num_words; ++i) 
         r[i] = a[i] & b[i];
 }
+//}}}
 
+//{{{ void set(uint32_t *b, uint32_t i)
 void set(uint32_t *b, uint32_t i)
 {
     b[i/32] |= 1 << (i%32);
 }
+//}}}
 
+//{{{ void set_bit_arrays(char *h, uint32_t *a0, uint32_t *a1, uint32_t
 void set_bit_arrays(char *h, uint32_t *a0, uint32_t *a1, uint32_t num_samples)
 {
     uint32_t i;
@@ -40,6 +47,7 @@ void set_bit_arrays(char *h, uint32_t *a0, uint32_t *a1, uint32_t num_samples)
             set(a1,i);
     }
 }
+//}}}
 
 
 
@@ -64,6 +72,7 @@ void set_bit_arrays(char *h, uint32_t *a0, uint32_t *a1, uint32_t num_samples)
  * @param R pre allocated space (num_bytes long)
  * @param t_A pre allocated space (num_samples*num_bytes long)
  */
+//{{{ long double ehh_step(uint32_t **A,
 long double ehh_step(uint32_t **A,
                      uint32_t *len_A,
                      //uint32_t *C1,
@@ -128,11 +137,10 @@ long double ehh_step(uint32_t **A,
 
     return ehh;
 }
+//}}}
 
-
+//{{{ ssize_t push_B(uint32_t *B,
 ssize_t push_B(uint32_t *B,
-               uint32_t **B0,
-               uint32_t **B1,
                uint32_t *B_i,
                uint32_t num_words,
                uint32_t num_samples,
@@ -141,6 +149,7 @@ ssize_t push_B(uint32_t *B,
                size_t *linecap,
                FILE *fp)
 {
+    uint32_t *B0, *B1;
     ssize_t linelen;
     char *p, *h;
     if (((linelen = getline(line, linecap, fp)) > 0)) {
@@ -154,15 +163,17 @@ ssize_t push_B(uint32_t *B,
         h = p + strlen(p) + 1;
 
         // parse the variants into bit arays 
-        *B0 = B + ((*B_i)*2*num_words);
-        *B1 = B + (((*B_i)*2+1)*num_words);
-        set_bit_arrays(h, *B0, *B1, num_samples);
+        B0 = B + ((*B_i)*2*num_words);
+        B1 = B + (((*B_i)*2+1)*num_words);
+        set_bit_arrays(h, B0, B1, num_samples);
         *B_i += 1;
     }
 
     return linelen;
 }
+//}}}
 
+//{{{long double ihh_back(uint32_t locus_i,
 long double ihh_back(uint32_t locus_i,
                      uint32_t *B,
                      uint32_t **A0,
@@ -174,11 +185,7 @@ long double ihh_back(uint32_t locus_i,
                      uint32_t *physical_pos,
                      uint32_t **t_A) 
 {
-#if 1
     // work down stream with just C1
-    double locus_genetic_pos = genetic_pos[locus_i];
-    uint32_t locus_physical_pos = physical_pos[locus_i];
-
     uint32_t *B0 = B + (locus_i*2*num_words);
     uint32_t *B1 = B + ((locus_i*2+1)*num_words);
     uint32_t num_C0 = pop_count(B0, num_words);
@@ -190,45 +197,121 @@ long double ihh_back(uint32_t locus_i,
     uint32_t len_A0 = 1;
 
     uint32_t i = locus_i - 1;
-    long double e0 = 1, e1 = 1;
+    long double s_e0 = 0, s_e1 = 0, last_e0 = 1, last_e1 = 1, e0 = 1, e1 = 1;
     while ( (i > 0) && (e0 > 0.05) && (e1 > 0.05) ) {
-        printf("-%u\t%f\t", locus_physical_pos-physical_pos[i],
-                           genetic_pos[i]-locus_genetic_pos);
         e1 = ehh_step(A1,
                       &len_A1,
-                      //C1,
                       num_C1,
                       B,
                       i,
-                      //&S,
                       num_words,
                       num_bytes,
-                      //B0_c,
-                      //B1_c,
                       R,
                       t_A);
-
-        printf("%Lf\t", e1);
 
         e0 = ehh_step(A0,
                       &len_A0,
-                      //C0,
                       num_C0,
                       B,
                       i,
-                      //&S,
                       num_words,
                       num_bytes,
-                      //B0_c,
-                      //B1_c,
                       R,
                       t_A);
 
-        printf("%Lf\n", e0);
+        s_e0 += (last_e0 + e0)* (genetic_pos[i+1] -genetic_pos[i]);
+        s_e1 += (last_e1 + e1)* (genetic_pos[i+1] -genetic_pos[i]);
 
+        last_e0 = e0;
+        last_e1 = e1;
         i -= 1;
     }
-    printf("--\n");
-#endif
+
+    printf("%Lf\t%Lf\n", s_e0/2, s_e1/2);
+
     return 0;
 }
+//}}}
+
+//{{{ long double ihh_forward(uint32_t locus_i,
+long double ihh_forward(uint32_t locus_i,
+                        uint32_t *B,
+                        uint32_t *B_i,
+                        FILE *fp,
+                        char **line,
+                        uint32_t **A0,
+                        uint32_t **A1,
+                        uint32_t num_words,
+                        uint32_t num_bytes,
+                        uint32_t num_samples,
+                        uint32_t *R,
+                        double *genetic_pos,
+                        uint32_t *physical_pos,
+                        uint32_t **t_A) 
+{
+    size_t linecap = 0;
+    ssize_t linelen;
+
+    uint32_t *B0 = B + (locus_i*2*num_words);
+    uint32_t *B1 = B + ((locus_i*2+1)*num_words);
+    uint32_t num_C0 = pop_count(B0, num_words);
+    uint32_t num_C1 = pop_count(B1, num_words);
+
+    memcpy(*A1, B1, num_bytes);
+    uint32_t len_A1 = 1;
+    memcpy(*A0, B0, num_bytes);
+    uint32_t len_A0 = 1;
+
+    uint32_t i = locus_i + 1;
+    long double s_e0 = 0, s_e1 = 0, last_e0 = 1, last_e1 = 1, e0 = 1, e1 = 1;
+    char *locus_name = NULL;
+    while ( (e0 > 0.05) || (e1 > 0.05) ) {
+
+        if (i == *B_i)
+            linelen = push_B(B,
+                             B_i,
+                             num_words,
+                             num_samples,
+                             &locus_name,
+                             line, 
+                             &linecap,
+                             fp);
+        if (linelen < 1)
+            break;
+
+        if ( e1 > 0.05)
+            e1 = ehh_step(A1,
+                          &len_A1,
+                          num_C1,
+                          B,
+                          i,
+                          num_words,
+                          num_bytes,
+                          R,
+                          t_A);
+
+        if ( e0 > 0.05)
+            e0 = ehh_step(A0,
+                          &len_A0,
+                          num_C0,
+                          B,
+                          i,
+                          num_words,
+                          num_bytes,
+                          R,
+                          t_A);
+
+        s_e0 += (last_e0 + e0)* (genetic_pos[i] - genetic_pos[i-1]);
+        s_e1 += (last_e1 + e1)* (genetic_pos[i] - genetic_pos[i-1]);
+
+        last_e0 = e0;
+        last_e1 = e1;
+
+        i += 1;
+    }
+
+    printf("%Lf\t%Lf\n", s_e0/2, s_e1/2);
+
+    return 0;
+}
+//}}}

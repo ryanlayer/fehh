@@ -109,6 +109,7 @@ int main(int argc, char **argv)
     bcf_destroy(rec);
     */
 
+    //{{{ get genetic_pos and physical_pos from the map file
     FILE *fp = fopen(map_file_name, "r");
     if (fp == NULL) {
         fprintf(stderr, "ERROR: Could not open %s\n", map_file_name);
@@ -132,6 +133,7 @@ int main(int argc, char **argv)
         i+=1;
     }
     fclose(fp);
+    //}}}
 
     uint32_t maf_threshold = num_samples * 0.05;
     uint32_t num_words = num_samples / 32 + 1;
@@ -146,20 +148,11 @@ int main(int argc, char **argv)
     // B will hold B0 and B1 for each variant
     uint32_t *B = (uint32_t *)calloc(num_variants*2, num_bytes);
 
-    // C0 and C1 hold the masks that define the samples with and without
-    // the core haplotype
-    uint32_t *C0 = (uint32_t *)calloc(1, num_bytes);
-    uint32_t *C1 = (uint32_t *)calloc(1, num_bytes);
     uint32_t num_C0, num_C1;
-
-    uint32_t *B0_c = (uint32_t *)calloc(1, num_bytes);
-    uint32_t *B1_c = (uint32_t *)calloc(1, num_bytes);
 
     uint32_t *R = (uint32_t *)malloc(num_bytes);
 
-    //FILE *fp = fopen(tped_file_name, "r");
     fp = fopen(tped_file_name, "r");
-    
     if (fp == NULL) {
         fprintf(stderr, "ERROR: Could not open %s\n", tped_file_name);
         exit(1);
@@ -173,27 +166,52 @@ int main(int argc, char **argv)
     for ( L_i = 0; L_i < num_variants; ++L_i) {
         if (L_i == B_i)
             linelen = push_B(B,
-                           &B0,
-                           &B1,
-                           &B_i,
-                           num_words,
-                           num_samples,
-                           &locus_name,
-                           &line, 
-                           &linecap,
-                           fp);
+                             &B_i,
+                             num_words,
+                             num_samples,
+                             &locus_name,
+                             &line, 
+                             &linecap,
+                             fp);
         if (linelen < 1)
             break;
 
+        B0 = B + (L_i*2*num_words);
+        B1 = B + ((L_i*2+1)*num_words);
+ 
         af = pop_count(B1, num_words);
+        printf("%u %u\n", af, maf_threshold);
 
         if (af >= maf_threshold) {
-            //long iHH_b = ihh_back();
-            //iHH_f = ihh_forward();
+            /*
+            long double r0 = ihh_back(L_i,
+                                     B,
+                                     &A0,
+                                     &A1,
+                                     num_words,
+                                     num_bytes,
+                                     R,
+                                     genetic_pos,
+                                     physical_pos,
+                                     &t_A);
+            */
+            long double r1 = ihh_forward(L_i,
+                                         B,
+                                         &B_i,
+                                         fp,
+                                         &line,
+                                         &A0,
+                                         &A1,
+                                         num_words,
+                                         num_bytes,
+                                         num_samples,
+                                         R,
+                                         genetic_pos,
+                                         physical_pos,
+                                         &t_A);
         }
-
-        printf("%s\t%u %u\n", locus_name, af, maf_threshold);
     }
+
 #if 0
     while ( ((linelen = getline(&line, &linecap, fp)) > 0)) {
 

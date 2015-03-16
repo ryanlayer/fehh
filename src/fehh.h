@@ -36,8 +36,6 @@ long double ehh_step(uint32_t **A,
                      uint32_t **t_A);
 
 ssize_t push_B(uint32_t *B,
-               uint32_t **B0,
-               uint32_t **B1,
                uint32_t *B_i,
                uint32_t num_words,
                uint32_t num_samples,
@@ -57,4 +55,18 @@ long double ihh_back(uint32_t locus_i,
                      uint32_t *physical_pos,
                      uint32_t **t_A);
 
+long double ihh_forward(uint32_t locus_i,
+                        uint32_t *B,
+                        uint32_t *B_i,
+                        FILE *fp,
+                        char **line,
+                        uint32_t **A0,
+                        uint32_t **A1,
+                        uint32_t num_words,
+                        uint32_t num_bytes,
+                        uint32_t num_samples,
+                        uint32_t *R,
+                        double *genetic_pos,
+                        uint32_t *physical_pos,
+                        uint32_t **t_A);
 #endif

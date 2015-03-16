@@ -215,6 +215,8 @@ int main(int argc, char **argv)
     uint32_t locus_i = B_i - 1; //move back one to start at the targe locus
     double locus_genetic_pos = genetic_pos[locus_i];
     uint32_t locus_physical_pos = physical_pos[locus_i];
+    long double e0 = 1, e1 = 1;
+#if 0
     long double r = ihh_back(locus_i,
                              B,
                              &A0,
@@ -225,13 +227,9 @@ int main(int argc, char **argv)
                              genetic_pos,
                              physical_pos,
                              &t_A);
-
-#if 0
+#endif
+#if 1
     // work down stream with just C1
-    uint32_t locus_i = B_i - 1; //move back one to start at the targe locus
-    double locus_genetic_pos = genetic_pos[locus_i];
-    uint32_t locus_physical_pos = physical_pos[locus_i];
-
     B0 = B + (locus_i*2*num_words);
     B1 = B + ((locus_i*2+1)*num_words);
     num_C0 = pop_count(B0, num_words);
@@ -256,7 +254,6 @@ int main(int argc, char **argv)
     len_A0 = 1;
 
     i = locus_i - 1;
-    long double e0 = 1, e1 = 1;
     //while ( (i > locus_i - 150) ) {
     while ( (i > 0) && (e0 > 0.05) && (e1 > 0.05) ) {
         printf("-%u\t%f\t", locus_physical_pos-physical_pos[i],
@@ -301,6 +298,8 @@ int main(int argc, char **argv)
     // work upstream
     B0 = B + (locus_i*2*num_words);
     B1 = B + ((locus_i*2+1)*num_words);
+    num_C0 = pop_count(B0, num_words);
+    num_C1 = pop_count(B1, num_words);
 
     /*
     and(R, B0, C1, num_words);
@@ -325,7 +324,9 @@ int main(int argc, char **argv)
     i = locus_i + 1;
     //while ( ((linelen = getline(&line, &linecap, fp)) > 0) &&
             //(i < locus_i + 150)) {
-    long double e0 = 1, e1 = 1;
+    //long double e0 = 1, e1 = 1;
+    e0 = 1; 
+    e1 = 1;
     while ( ((linelen = getline(&line, &linecap, fp)) > 0) &&
             (e0 > 0.05) && (e1 > 0.05) ) {
         // skip some fields
