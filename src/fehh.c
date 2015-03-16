@@ -250,7 +250,7 @@ long double ihh_forward(uint32_t locus_i,
                         uint32_t **t_A) 
 {
     size_t linecap = 0;
-    ssize_t linelen;
+    ssize_t linelen = 1;
 
     uint32_t *B0 = B + (locus_i*2*num_words);
     uint32_t *B1 = B + ((locus_i*2+1)*num_words);
@@ -266,6 +266,8 @@ long double ihh_forward(uint32_t locus_i,
     long double s_e0 = 0, s_e1 = 0, last_e0 = 1, last_e1 = 1, e0 = 1, e1 = 1;
     char *locus_name = NULL;
     while ( (e0 > 0.05) || (e1 > 0.05) ) {
+
+        //fprintf(stderr,"i:%u\tB_i:%u\n", i, *B_i);
 
         if (i == *B_i)
             linelen = push_B(B,
