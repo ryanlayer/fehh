@@ -7,11 +7,16 @@ uint32_t pop_count(uint32_t *b, uint32_t num_words)
 
     for (i = 0; i < num_words; ++i) {
         uint32_t x = b[i];
+        //count +=  __builtin_popcount(x);
+        for (; x; count++)
+            x &= x-1;
+#if 0
 #ifndef __SSE4_2__
         for (; x; count++)
             x &= x-1;
 #else
         count += _mm_popcnt_u32(x);
+#endif
 #endif
     }
 
@@ -161,6 +166,7 @@ ssize_t push_B(uint32_t *B,
         p = strtok(NULL, " ");
         p = strtok(NULL, " ");
         h = p + strlen(p) + 1;
+        //h = *line;
 
         // parse the variants into bit arays 
         B0 = B + ((*B_i)*2*num_words);
